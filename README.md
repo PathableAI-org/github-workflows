@@ -40,9 +40,7 @@ jobs:
 
 | Workflow | Description | Docs |
 |----------|-------------|------|
-| — | None yet | — |
-
-Coming next: Spec Kit project-file upgrade (`speckit-upgrade`).
+| [`speckit-upgrade`](.github/workflows/speckit-upgrade.yml) | Refresh Spec Kit project files and open a PR | [docs/speckit-upgrade.md](docs/speckit-upgrade.md) |
 
 ### Actions
 
