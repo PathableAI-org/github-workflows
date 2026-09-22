@@ -1,0 +1,3 @@
+# Shared CI automation — require review from developers
+.github/workflows/ @PathableAI-org/developers
+actions/ @PathableAI-org/developers
