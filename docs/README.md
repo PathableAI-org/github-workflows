@@ -6,4 +6,6 @@ When you add a workflow under `.github/workflows/`, add a matching `docs/<workfl
 
 ## Guides
 
-No workflow docs yet.
+| Guide | Description |
+|-------|-------------|
+| [speckit-upgrade.md](speckit-upgrade.md) | Reusable Spec Kit project-file upgrade workflow |
