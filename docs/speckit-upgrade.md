@@ -29,7 +29,7 @@ permissions:
   pull-requests: write
 ```
 
-Pass `secrets: inherit` so the reusable workflow can use `GITHUB_TOKEN` for the GitHub API and PR creation.
+`GITHUB_TOKEN` is available to the called workflow via `github.token`; do **not** pass `secrets: inherit` unless a future named secret is required.
 
 ## Inputs
 
@@ -81,7 +81,6 @@ jobs:
     uses: PathableAI-org/github-workflows/.github/workflows/speckit-upgrade.yml@v1
     with:
       specify_version: ${{ inputs.specify_version }}
-    secrets: inherit
 ```
 
 Pin `@v1` or a full commit SHA—not a branch name.

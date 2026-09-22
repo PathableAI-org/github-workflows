@@ -79,6 +79,7 @@ jobs:
         id: version
         env:
           INPUT_VERSION: ${{ inputs.specify_version }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -87,7 +88,7 @@ jobs:
           else
             tag="$(curl -sSf \
               -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer ${{ github.token }}" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
               -H "X-GitHub-Api-Version: 2022-11-28" \
               "https://api.github.com/repos/github/spec-kit/releases/latest" \
               | jq -r '.tag_name // empty')"
@@ -102,13 +103,21 @@ jobs:
             tag="v${tag}"
           fi
 
+          # Reject values that are not release-tag shaped (blocks shell metacharacters).
+          if [[ ! "$tag" =~ ^v[0-9A-Za-z._-]+$ ]]; then
+            echo "Invalid Spec Kit release tag: ${tag}" >&2
+            exit 1
+          fi
+
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
 
       - name: Install specify-cli
+        env:
+          SPECKIT_TAG: ${{ steps.version.outputs.tag }}
         run: |
           set -euo pipefail
           uv tool install specify-cli --force \
-            --from "git+https://github.com/github/spec-kit.git@${{ steps.version.outputs.tag }}"
+            --from "git+https://github.com/github/spec-kit.git@${SPECKIT_TAG}"
 
       - name: Capture current project version
         id: before
@@ -140,32 +149,39 @@ jobs:
 
       - name: Summarize upgrade result
         id: summary
+        env:
+          SPECKIT_TAG: ${{ steps.version.outputs.tag }}
+          BEFORE_VERSION: ${{ steps.before.outputs.version }}
+          AFTER_VERSION: ${{ steps.after.outputs.version }}
+          ADD_PATHS: ${{ inputs.add_paths }}
         run: |
           set -euo pipefail
           integrations="$(jq -r '.installed_integrations | join(", ")' .specify/integration.json)"
 
           {
             echo "### Spec Kit upgrade"
-            echo "- CLI release: \`${{ steps.version.outputs.tag }}\`"
-            echo "- Project version: \`${{ steps.before.outputs.version }}\` → \`${{ steps.after.outputs.version }}\`"
+            echo "- CLI release: \`${SPECKIT_TAG}\`"
+            echo "- Project version: \`${BEFORE_VERSION}\` → \`${AFTER_VERSION}\`"
             echo "- Integrations: ${integrations}"
           } >> "$GITHUB_STEP_SUMMARY"
 
           {
             echo "Automated Spec Kit project-file upgrade."
             echo
-            echo "- CLI release: \`${{ steps.version.outputs.tag }}\`"
-            echo "- Project version: \`${{ steps.before.outputs.version }}\` → \`${{ steps.after.outputs.version }}\`"
+            echo "- CLI release: \`${SPECKIT_TAG}\`"
+            echo "- Project version: \`${BEFORE_VERSION}\` → \`${AFTER_VERSION}\`"
             echo "- Integrations upgraded: ${integrations}"
             echo "- Extensions refreshed via \`specify extension update\`"
             echo
-            echo "Managed paths included in this PR:"
-            echo "- \`.specify/\`"
-            echo "- \`.agents/skills/\`"
+            echo "Managed paths included in this PR (from \`add_paths\`):"
+            while IFS= read -r path; do
+              [ -z "$path" ] && continue
+              echo "- \`${path}\`"
+            done <<< "$ADD_PATHS"
             echo
-            echo "Gitignored agent folders (\`.claude/\`, \`.cursor/skills/\`) are updated locally by the upgrade"
-            echo "commands but are not committed. After merging, run \`specify integration upgrade <key>\` locally"
-            echo "if you rely on those integrations."
+            echo "Paths updated on the runner but not listed above (for example gitignored"
+            echo "\`.claude/\` or \`.cursor/skills/\`) are not committed. After merging, run"
+            echo "\`specify integration upgrade <key>\` locally if you rely on those integrations."
             echo
             echo "Review the diff for any managed files that may have overwritten local customizations."
           } > /tmp/speckit-upgrade-pr-body.md
