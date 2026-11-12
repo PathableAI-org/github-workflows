@@ -141,6 +141,38 @@ jobs:
         # The CLI prompts when updates exist and has no --yes option.
         run: specify extension update <<< 'y'
 
+      - name: Refresh presets and extensions for non-default integrations
+        # Spec Kit registers presets and extensions only for the default
+        # integration, so `integration upgrade --force` leaves every other
+        # integration with plain upstream core skills. `integration use`
+        # re-renders them for the selected integration. Finish by selecting and
+        # upgrading the default again: the upgrade renders its extension skills
+        # in full and restores the execute bit on shared scripts.
+        env:
+          SCRIPT: ${{ inputs.script }}
+        run: |
+          set -euo pipefail
+
+          default="$(jq -r '.default_integration // .integration // empty' .specify/integration.json)"
+          if [ -z "$default" ]; then
+            echo "No default integration recorded; skipping refresh."
+            exit 0
+          fi
+
+          refreshed=false
+          while IFS= read -r key; do
+            [ "$key" = "$default" ] && continue
+            echo "Refreshing integration: ${key}"
+            specify integration use "${key}"
+            refreshed=true
+          done < <(jq -r '.installed_integrations[]' .specify/integration.json)
+
+          if [ "$refreshed" = true ]; then
+            echo "Restoring default integration: ${default}"
+            specify integration use "${default}"
+            specify integration upgrade "${default}" --force --script "${SCRIPT}"
+          fi
+
       - name: Capture upgraded project version
         id: after
         run: |
@@ -173,6 +205,7 @@ jobs:
             echo "- Project version: \`${BEFORE_VERSION}\` → \`${AFTER_VERSION}\`"
             echo "- Integrations upgraded: ${integrations}"
             echo "- Extensions refreshed via \`specify extension update\`"
+            echo "- Presets and extensions re-registered for non-default integrations via \`specify integration use\`"
             echo
             echo "Managed paths included in this PR (from \`add_paths\`):"
             while IFS= read -r path; do

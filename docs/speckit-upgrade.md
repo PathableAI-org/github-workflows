@@ -10,8 +10,9 @@ Upstream reference: [Spec Kit upgrade](https://github.github.com/spec-kit/upgrad
 2. Installs `specify-cli` with that tag via `uv`
 3. Runs `specify integration upgrade` for each key in `.specify/integration.json` → `installed_integrations`
 4. Runs `specify extension update`, supplying `y` on standard input to confirm available updates without an interactive terminal
-5. Opens a PR committing only the configured managed paths (default: `.specify/` and `.agents/skills/`)
-6. Writes a step summary and PR body describing the upgrade and managed vs gitignored paths
+5. Runs `specify integration use` for each installed integration other than the default, so every integration keeps its preset and extension skills (Spec Kit registers them only for the selected integration), then selects and upgrades the default again
+6. Opens a PR committing only the configured managed paths (default: `.specify/` and `.agents/skills/`)
+7. Writes a step summary and PR body describing the upgrade and managed vs gitignored paths
 
 ## Prerequisites
 
